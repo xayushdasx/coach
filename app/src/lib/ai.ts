@@ -26,19 +26,30 @@ export async function chat(messages: Msg[], opts: { temperature?: number; maxTok
   const contents = messages
     .filter((m) => m.role !== 'system')
     .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
-  const res = await fetch(`${GEMINI}/${thinkingModel}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      contents,
-      generationConfig: {
-        temperature: opts.temperature,
-        maxOutputTokens: opts.maxTokens,
-        ...(opts.json ? { responseMimeType: 'application/json' } : {}),
-      },
-    }),
+  const body = JSON.stringify({
+    ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    contents,
+    generationConfig: {
+      temperature: opts.temperature,
+      maxOutputTokens: opts.maxTokens,
+      ...(opts.json ? { responseMimeType: 'application/json' } : {}),
+    },
   })
+  // Gemini's free tier often answers 503 "high demand" or 429 for a few seconds. Wait and retry,
+  // and if the chosen model stays overloaded, try the other Flash-Lite model.
+  const fallback = thinkingModel === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.1-flash-lite'
+  const attempts = [
+    { model: thinkingModel, wait: 0 },
+    { model: thinkingModel, wait: 2000 },
+    { model: fallback, wait: 3000 },
+    { model: fallback, wait: 8000 },
+  ]
+  let res!: Response
+  for (const a of attempts) {
+    if (a.wait) await new Promise((r) => setTimeout(r, a.wait))
+    res = await fetch(`${GEMINI}/${a.model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+    if (![429, 500, 502, 503, 504].includes(res.status)) break
+  }
   if (!res.ok) throw await failure(res, 'Gemini')
   const data = await res.json()
   const cand = data?.candidates?.[0]

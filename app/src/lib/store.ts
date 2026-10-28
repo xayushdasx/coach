@@ -123,4 +123,12 @@ export function resetWorkspace() {
   listeners.forEach((l) => l())
 }
 
+// Replace this browser's workspace with one exported from another browser.
+export function importWorkspace(data: Partial<Workspace>) {
+  localStorage.setItem(KEY, JSON.stringify(data))
+  state = load()
+  localStorage.setItem(KEY, JSON.stringify(state))
+  listeners.forEach((l) => l())
+}
+
 export const uid = (p = '') => p + Math.random().toString(36).slice(2, 10)

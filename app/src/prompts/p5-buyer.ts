@@ -95,6 +95,9 @@ Personality: ${persona.personality}
 Language: ${persona.language}. Speak the way this person really talks on a call.
 How you came to be on this call: ${persona.visible.leadSource}. ${persona.visible.context}
 
+# The call
+A sales rep from the seller described below is calling YOU about your enquiry. You are the customer. You do not work for the seller, and ${persona.visible.company} is your own employer, which has nothing to do with this call.
+
 # Your hidden truth (never state this unprompted)
 ${JSON.stringify(persona.hidden, null, 2)}
 
@@ -140,7 +143,11 @@ ${buying.allowed
 {"say": string, "trust": number, "revealedFactIds": string[], "objectionRaised": string | null, "objectionResolved": string | null, "end": null | "bought" | "next_step" | "think_about_it" | "hung_up"}
 - "revealedFactIds": fact ids you revealed in THIS turn.
 - "objectionRaised" / "objectionResolved": objection id (e.g. "o2") raised or resolved in THIS turn.
-- "end": set when you are ending the call in this turn. "say" must then actually close the conversation (a goodbye or a clear brush-off), not ask a question. "bought" only if buying is allowed above.`
+- "end": null on almost every turn. Calls never end after a set number of turns; they end the way real calls do. Set "end" only when THIS line is your goodbye:
+  - "next_step" / "bought": a next step (or purchase) has been agreed and confirmed with specifics by both of you, and you are now saying goodbye.
+  - "think_about_it": you are politely wrapping up without committing ("send me the details, I'll think about it, bye").
+  - "hung_up": you've had enough (trust very low, the rep is rude, pushy or wasting your time) and you end it.
+  Never set "end" on a line where you ask a question, set a condition, raise a concern or say you're "willing to" do something; the rep must get to respond first. Being open to a demo is not the end of the call; confirming the day and time and saying goodbye is. "bought" only if buying is allowed above.`
 }
 
 function parseReply(raw: string, prevTrust: number): BuyerReply {
@@ -208,9 +215,20 @@ export async function buyerTurn(editorial: Editorial, persona: Persona, mode: Mo
 
   // Hard limits that hold even if the rewrite didn't.
   if (reply.end === 'bought' && !buying.allowed) reply.end = 'think_about_it'
-  // A line that asks the rep something is not a goodbye: keep the call going.
-  if (reply.end && reply.end !== 'hung_up' && reply.say.trim().endsWith('?')) reply.end = null
+  // Only a real goodbye or brush-off ends the call. A line with a question, a condition or no
+  // closing words leaves the rep a chance to answer, so the call keeps going.
+  if (reply.end && !endsTheCall(reply)) reply.end = null
   return reply
+}
+
+const CLOSING = /\b(bye|goodbye|talk (?:to you )?(?:soon|later|then)|speak (?:to you )?(?:soon|later|then)|see you (?:then|on|saturday|sunday)|take care|have a (?:good|nice|great)|thanks? (?:you )?for (?:your |the )?(?:time|call)|thank you|(?:send|email) me (?:the )?(?:invite|details|link|information|info)|i(?:'ll| will) (?:think|get back|call you|check|look|review|consider)|let me (?:think|check|discuss|talk)|not interested|i (?:have|need|gotta) to go|i'?m (?:hanging up|going to hang up)|don't call|stop calling|i'?m done|we'?re done|that'?s (?:all|it) for (?:now|today))\b/i
+
+function endsTheCall(r: BuyerReply): boolean {
+  const say = r.say.replace(/[’‘]/g, "'")
+  if (say.includes('?')) return false
+  // Hanging up angrily needs low trust or explicit closing words; everything else needs closing words.
+  if (r.end === 'hung_up') return r.trust <= 2 || CLOSING.test(say)
+  return CLOSING.test(say)
 }
 
 const PRAISE = /(at least you(?:'re| are| aren't| didn't)|good question|great question|fair (?:answer|point|enough)|(?:i )?appreciate (?:your|the) honesty|that's (?:more |a bit more )?(?:honest|realistic)|you(?:'re| are) being honest|thanks for being honest)/i
@@ -221,6 +239,6 @@ function problems(r: BuyerReply, buyingAllowed: boolean, terms: string[], turns:
   const leaked = leakedTerms(r.say, terms, turns)
   if (leaked.length) out.push(`You mentioned "${leaked.join('", "')}", which the rep has not told you and you cannot know; use an outsider's words instead (e.g. "a longer plan", "how much is it").`)
   if (PRAISE.test(r.say.replace(/[’‘]/g, "'"))) out.push("Don't comment on the rep's honesty or how they are doing; react only to what they said.")
-  if (r.end && r.end !== 'hung_up' && r.say.trim().endsWith('?')) out.push('If you end the call, close it (a goodbye or a brush-off) instead of asking a question; or keep the call going with "end": null.')
+  if (r.end && !endsTheCall(r)) out.push('This line does not end the call: you asked something or set a condition, so the rep must get to respond. Keep the call going with "end": null, unless you really mean to say goodbye now.')
   return out
 }
