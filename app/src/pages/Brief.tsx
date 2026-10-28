@@ -180,7 +180,7 @@ export default function Brief() {
           </Section>
         </div>
 
-        <div className="stack" style={{ gap: 16, position: 'sticky', top: 72 }}>
+        <div className="stack" style={{ gap: 16, position: 'sticky', top: 72, maxHeight: 'calc(100vh - 88px)', overflowY: 'auto' }}>
           <section className="card">
             <div className="card-head"><h2>Scorecard</h2><span className={`badge mono ${weightSum === 100 ? '' : 'bad'}`}>{weightSum}/100</span></div>
             <div className="card-pad stack" style={{ gap: 8 }}>

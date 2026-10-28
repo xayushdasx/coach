@@ -143,7 +143,7 @@ export default function Company() {
           ))}
         </div>
 
-        <div className="stack" style={{ gap: 16, position: 'sticky', top: 72 }}>
+        <div className="stack" style={{ gap: 16, position: 'sticky', top: 72, maxHeight: 'calc(100vh - 88px)', overflowY: 'auto' }}>
           <section className="card">
             <div className="card-head"><h2>Uploads</h2><span className="badge mono">{sources.length}</span></div>
             <div className="card-pad stack">

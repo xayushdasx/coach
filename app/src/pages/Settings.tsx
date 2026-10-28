@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { defaultSettings, resetWorkspace, setState, useStore } from '../lib/store'
+import { defaultSettings, getState, importWorkspace, resetWorkspace, setState, useStore } from '../lib/store'
 import { chat, SARVAM_VOICES, speak } from '../lib/ai'
 import { Busy, ErrorNote, PageHead } from '../components/ui'
 
@@ -15,7 +15,31 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState<'text' | 'voice' | null>(null)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadMsg, setLoadMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const set = (patch: Partial<typeof settings>) => setState((s) => ({ settings: { ...s.settings, ...patch } }))
+
+  function exportWorkspace() {
+    const s = getState()
+    const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `coach-workspace-${(s.company.companyName || 'workspace').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  async function loadFile(file?: File) {
+    if (!file) return
+    try {
+      const data = JSON.parse(await file.text())
+      if (!data || typeof data !== 'object' || !('company' in data)) throw new Error('This is not a Coach workspace file.')
+      if (!confirm('Replace everything in this browser with the workspace from this file?')) return
+      importWorkspace(data)
+      setLoadMsg({ ok: true, text: `Loaded ${data.company?.companyName || 'workspace'}.` })
+    } catch (e) {
+      setLoadMsg({ ok: false, text: `Couldn't load the file: ${(e as Error).message}` })
+    }
+  }
 
   async function test(kind: 'text' | 'voice') {
     setTesting(kind)
@@ -71,10 +95,16 @@ export default function SettingsPage() {
 
       <section className="card card-pad stack" style={{ marginTop: 16 }}>
         <h3>Workspace data</h3>
-        <p className="small muted">Everything is stored in this browser. Clearing it removes the company info, brief, buyers, lessons and all reports.</p>
-        <div>
+        <p className="small muted">Everything is stored in this browser. Download it to move your setup to another browser or share it with a teammate, then load the file there.</p>
+        <div className="row wrap">
+          <button className="btn" onClick={exportWorkspace}>Download workspace</button>
+          <label className="btn">
+            Load workspace file
+            <input type="file" accept=".json,application/json" hidden onChange={(e) => loadFile(e.target.files?.[0])} />
+          </label>
           <button className="btn" style={{ color: 'var(--bad)' }} onClick={() => confirm('Delete all workspace data in this browser?') && resetWorkspace()}>Clear workspace</button>
         </div>
+        {loadMsg && <div className={`notice ${loadMsg.ok ? 'info' : 'bad'}`}>{loadMsg.text}</div>}
       </section>
     </div>
   )
