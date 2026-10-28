@@ -1,0 +1,11 @@
+{
+  "name": "coach-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Holds the Gemini and Sarvam API keys and forwards the coach app's AI calls.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
