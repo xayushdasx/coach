@@ -18,5 +18,5 @@ Put `GEMINI_API_KEY` and `SARVAM_API_KEY` in `app/.env.local`. The Vite dev serv
 
 ## Deployment
 
-- **Backend (Render):** `render.yaml` defines the `coach-api` web service from `server/`. Set `GEMINI_API_KEY` and `SARVAM_API_KEY` in the Render dashboard.
-- **Frontend (Vercel):** project root `app/`. `app/vercel.json` rewrites `/api/*` to the Render service, so the browser never sees the keys.
+- **Backend (Render):** `render.yaml` defines the `coach-api` web service from `server/` (live at https://coach-api-jar5.onrender.com). Set `GEMINI_API_KEY` and `SARVAM_API_KEY` in the Render dashboard.
+- **Frontend (Vercel):** live at https://coach-six-tau.vercel.app; project root `app/`. `app/vercel.json` rewrites `/api/*` to the Render service, so the browser never sees the keys.

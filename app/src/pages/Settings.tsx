@@ -39,7 +39,7 @@ export default function SettingsPage() {
 
   return (
     <div className="page" style={{ maxWidth: 760 }}>
-      <PageHead title="Settings" sub="Thinking runs on Google Gemini, voice on Sarvam. The API keys live in app/.env.local and are added by the local server, so they never reach the browser." />
+      <PageHead title="Settings" sub="Thinking runs on Google Gemini, voice on Sarvam. The API keys are held by the server and never reach the browser." />
       <section className="card card-pad stack" style={{ gap: 16 }}>
         <label className="field">
           <span className="field-label">Thinking model (Gemini)</span>
