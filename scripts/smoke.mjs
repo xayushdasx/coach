@@ -2,7 +2,7 @@
 // Usage: node scripts/smoke.mjs [base-url]   (default: the live Vercel site)
 // Uses a few seconds of real API calls; run it after a deploy, not on a schedule.
 
-const BASE = (process.argv[2] ?? 'https://coach-six-tau.vercel.app').replace(/\/$/, '')
+const BASE = (process.argv[2] ?? 'https://salescoach-ai-app.vercel.app').replace(/\/$/, '')
 let failed = 0
 
 async function check(name, fn) {

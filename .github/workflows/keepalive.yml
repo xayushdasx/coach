@@ -15,4 +15,4 @@ jobs:
       - name: Backend health
         run: curl -sf --retry 3 --retry-delay 20 --max-time 90 https://coach-api-jar5.onrender.com/health
       - name: Live site
-        run: curl -sf --retry 3 --retry-delay 10 --max-time 60 -o /dev/null https://coach-six-tau.vercel.app/
+        run: curl -sf --retry 3 --retry-delay 10 --max-time 60 -o /dev/null https://salescoach-ai-app.vercel.app/

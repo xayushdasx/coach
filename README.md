@@ -4,7 +4,7 @@
 
 A company describes what it sells and how. Coach turns that into a complete training programme: a sales playbook, AI buyers to practise on, lessons, a quiz, and a judge that scores every call against the company's own rules.
 
-**Live app:** https://coach-six-tau.vercel.app &nbsp;·&nbsp; **Design spec:** [sales-coach-spec.md](sales-coach-spec.md)
+**Live app:** https://salescoach-ai-app.vercel.app &nbsp;·&nbsp; **Design spec:** [sales-coach-spec.md](sales-coach-spec.md)
 
 > Designed, built and deployed solo, from idea to a working product: product spec, prompt design, frontend, backend, voice pipeline and deployment.
 
