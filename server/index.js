@@ -68,7 +68,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return res.writeHead(204).end()
 
   const path = (req.url ?? '/').split('?')[0]
-  if (path === '/health') return send(res, 200, { ok: true, gemini: !!GEMINI_API_KEY, sarvam: !!SARVAM_API_KEY })
+  // /api/health is reachable through the Vercel rewrite, so the app can wake this server on page load.
+  if (path === '/health' || path === '/api/health') return send(res, 200, { ok: true, gemini: !!GEMINI_API_KEY, sarvam: !!SARVAM_API_KEY })
 
   const target = route(req.method, path)
   if (!target) return send(res, 404, { error: { message: 'Not found' } })

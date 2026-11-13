@@ -1,0 +1,29 @@
+name: CI
+
+# Every push and pull request must type-check and build, so broken code never reaches the live site.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci --prefix app
+      - name: Type-check and build frontend
+        run: npm run build --prefix app
+      - name: Check backend syntax
+        run: node --check server/index.js
+      - name: Start backend and check health
+        run: |
+          PORT=8099 node server/index.js &
+          for i in $(seq 1 20); do curl -sf localhost:8099/health && exit 0; sleep 0.5; done
+          exit 1

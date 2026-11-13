@@ -7,6 +7,25 @@ const SARVAM = '/api/sarvam'
 
 type Msg = { role: 'system' | 'user' | 'assistant'; content: string }
 
+const RETRYABLE = [429, 500, 502, 503, 504]
+
+// For Sarvam calls: retry brief overloads, gateway errors and network drops (e.g. the backend waking up).
+async function postWithRetry(url: string, init: () => RequestInit, service: string): Promise<Response> {
+  const waits = [0, 2000, 5000, 10000]
+  let last: Response | null = null
+  for (const wait of waits) {
+    if (wait) await new Promise((r) => setTimeout(r, wait))
+    try {
+      last = await fetch(url, { method: 'POST', ...init() })
+      if (!RETRYABLE.includes(last.status)) return last
+    } catch {
+      last = null
+    }
+  }
+  if (!last) throw new Error(`Could not reach ${service}. Check your connection and try again; if the app was idle, the server may still be waking up.`)
+  return last
+}
+
 async function failure(res: Response, service: string): Promise<Error> {
   let detail = ''
   try {
@@ -44,12 +63,19 @@ export async function chat(messages: Msg[], opts: { temperature?: number; maxTok
     { model: fallback, wait: 3000 },
     { model: fallback, wait: 8000 },
   ]
-  let res!: Response
+  let res: Response | null = null
+  let networkError: unknown = null
   for (const a of attempts) {
     if (a.wait) await new Promise((r) => setTimeout(r, a.wait))
-    res = await fetch(`${GEMINI}/${a.model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
-    if (![429, 500, 502, 503, 504].includes(res.status)) break
+    try {
+      res = await fetch(`${GEMINI}/${a.model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+      networkError = null
+      if (!RETRYABLE.includes(res.status)) break
+    } catch (e) {
+      networkError = e
+    }
   }
+  if (!res || networkError) throw new Error('Could not reach the AI service. Check your connection and try again; if the app was idle, the server may still be waking up.')
   if (!res.ok) throw await failure(res, 'Gemini')
   const data = await res.json()
   const cand = data?.candidates?.[0]
@@ -97,17 +123,14 @@ export async function chatJSON<T>(system: string, user: string, opts: { temperat
 export async function speak(text: string, voice: string, _style?: string): Promise<HTMLAudioElement> {
   const { ttsModel } = getSettings()
   const speaker = ALL_VOICES.includes(voice) ? voice : SARVAM_VOICES.female[0]
-  const res = await fetch(`${SARVAM}/text-to-speech`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: text.slice(0, 2500),
-      language_code: speaker.includes('_enhi_') ? 'hi-IN' : 'en-IN',
-      speaker,
-      model: ttsModel,
-      output_audio_codec: 'mp3',
-    }),
+  const body = JSON.stringify({
+    text: text.slice(0, 2500),
+    language_code: speaker.includes('_enhi_') ? 'hi-IN' : 'en-IN',
+    speaker,
+    model: ttsModel,
+    output_audio_codec: 'mp3',
   })
+  const res = await postWithRetry(`${SARVAM}/text-to-speech`, () => ({ headers: { 'Content-Type': 'application/json' }, body }), 'the voice service')
   if (!res.ok) throw await failure(res, 'Sarvam voice')
   const data = await res.json()
   const b64: string | undefined = data?.audios?.[0]
@@ -151,7 +174,7 @@ async function transcribeOne(blob: Blob, language: string): Promise<string> {
   form.append('file', file)
   form.append('model', sttModel)
   form.append('language_code', language)
-  const res = await fetch(`${SARVAM}/speech-to-text`, { method: 'POST', body: form })
+  const res = await postWithRetry(`${SARVAM}/speech-to-text`, () => ({ body: form }), 'the speech-to-text service')
   if (!res.ok) throw await failure(res, 'Sarvam speech-to-text')
   const data = await res.json()
   return String(data?.transcript ?? '').trim()

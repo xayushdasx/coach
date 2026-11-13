@@ -1,0 +1,16 @@
+name: Smoke test (live)
+
+# Full end-to-end check of the live app: site, backend, Gemini, Sarvam voice and speech-to-text.
+# Run by hand from the Actions tab after a deploy. It makes real AI calls (a few paise).
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/smoke.mjs
