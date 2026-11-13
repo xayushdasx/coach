@@ -129,7 +129,7 @@ These are the metrics I'd track with a real sales team. They aren't measured yet
 
 - Each browser keeps its own data (there is a download/load workspace option). A database and user accounts are the next step.
 - About 4–5 seconds of delay between turns: speech-to-text, then reasoning, then voice, one after another.
-- Render's free plan sleeps when idle, so the first request after a quiet spell takes about 50 seconds.
+- The backend runs on Render's free plan. A 10-minute keep-alive stops it sleeping, but GitHub can delay scheduled runs, so an occasional first request may still take ~20 s.
 - Tone and empathy are intentionally not scored.
 
 ## Run it locally
@@ -144,8 +144,17 @@ Create `app/.env.local` with `GEMINI_API_KEY=...` and `SARVAM_API_KEY=...` (see 
 
 ## Deployment
 
+Every push to `main` deploys automatically:
+
+- **Frontend (Vercel):** builds from the repo root using `vercel.json`, and only redeploys when `app/` changes. `/api/*` is forwarded to the Render backend, so the browser never sees the keys.
 - **Backend (Render):** `render.yaml` defines the `coach-api` service from `server/`. Set `GEMINI_API_KEY` and `SARVAM_API_KEY` in the Render dashboard.
-- **Frontend (Vercel):** project root `app/`. `app/vercel.json` forwards `/api/*` to the Render service, so the browser never sees the keys.
+
+Keeping it from breaking:
+
+- **CI** (`.github/workflows/ci.yml`): every push type-checks and builds the frontend and boots the backend.
+- **Keep-alive** (`keepalive.yml`): pings the backend every 10 minutes so the free instance never sleeps; a failed run means the live app is down, and GitHub emails the owner. The app also wakes the backend on page load.
+- **Live smoke test:** `node scripts/smoke.mjs` (or **Actions → Smoke test** on GitHub) checks the site, the backend, Gemini, Sarvam voice and speech-to-text end to end.
+- **Retries:** AI calls retry overloads and network drops, and fall back to a second Gemini model.
 
 ## Repository structure
 
@@ -155,6 +164,9 @@ app/                  React frontend
   src/lib/            AI client, voice engine, audio splitting, metrics, storage
   src/pages/          screens: company, brief, buyers, lessons, practice, call, report, team
 server/               Node backend that holds the API keys
+scripts/smoke.mjs     end-to-end test of the live deployment
+.github/workflows/    CI, keep-alive and smoke-test workflows
+vercel.json           Vercel build + /api rewrite
 render.yaml           Render deployment
 sales-coach-spec.md   product spec: sales lifecycle, scoring design, prompt pipeline
 ```
